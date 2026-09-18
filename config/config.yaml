@@ -1,0 +1,4 @@
+model:
+  path: "models_artifacts/order_lateness_model.joblib"
+  encoder_path: "models_artifacts/encoder.joblib"
+  results_path: "models_artifacts/order_lateness_results.json"

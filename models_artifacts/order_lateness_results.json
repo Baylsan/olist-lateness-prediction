@@ -1,0 +1,72 @@
+{
+  "strategy": "weighted",
+  "threshold": 0.5100000000000001,
+  "hyperparameters": {
+    "subsample": 0.7,
+    "n_estimators": 100,
+    "min_child_weight": 1,
+    "max_depth": 5,
+    "learning_rate": 0.1,
+    "colsample_bytree": 0.7
+  },
+  "validation_winner": "Tuned Weighted XGBoost",
+  "validation_metrics": {
+    "Model": "Tuned Weighted XGBoost",
+    "Threshold": 0.5100000000000001,
+    "Precision": 0.05574614065180103,
+    "Recall": 0.39634146341463417,
+    "F1": 0.09774436090225563,
+    "F2": 0.1783754116355653,
+    "PR-AUC": 0.05446641870382049
+  },
+  "test_metrics": {
+    "Precision": 0.10063463281958296,
+    "Recall": 0.21764705882352942,
+    "F1": 0.13763174209547427,
+    "F2": 0.17658288259624563,
+    "PR-AUC": 0.08310563417679571
+  },
+  "training_info": {
+    "strategy": "weighted",
+    "scale_pos_weight": 13.414812354699436,
+    "training_rows": 86806
+  },
+  "feature_columns": [
+    "num_items",
+    "total_freight",
+    "total_payment_value",
+    "approval_delay_hours",
+    "promised_delivery_days",
+    "purchase_month",
+    "purchase_weekday",
+    "purchase_hour",
+    "purchase_year",
+    "customer_state_AL",
+    "customer_state_AM",
+    "customer_state_AP",
+    "customer_state_BA",
+    "customer_state_CE",
+    "customer_state_DF",
+    "customer_state_ES",
+    "customer_state_GO",
+    "customer_state_MA",
+    "customer_state_MG",
+    "customer_state_MS",
+    "customer_state_MT",
+    "customer_state_PA",
+    "customer_state_PB",
+    "customer_state_PE",
+    "customer_state_PI",
+    "customer_state_PR",
+    "customer_state_RJ",
+    "customer_state_RN",
+    "customer_state_RO",
+    "customer_state_RR",
+    "customer_state_RS",
+    "customer_state_SC",
+    "customer_state_SE",
+    "customer_state_SP",
+    "customer_state_TO"
+  ],
+  "random_state": 42
+}
