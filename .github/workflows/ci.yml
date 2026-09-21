@@ -12,11 +12,32 @@ jobs:
         uses: actions/setup-python@v5
         with:
           python-version: '3.10'
+          cache: 'pip'
 
       - name: Install dependencies
         run: |
+          python -m pip install --upgrade pip
           pip install -r requirements.txt
           pip install pytest
+
+      # --- الخطوة المضافة لحل مشكلة DVC و FileNotFoundError ---
+      - name: Generate Dummy Artifacts
+        run: |
+          python -c "
+          import joblib
+          import numpy as np
+          from sklearn.preprocessing import OneHotEncoder
+          from sklearn.dummy import DummyClassifier
+
+          encoder = OneHotEncoder(handle_unknown='ignore')
+          encoder.fit([['A'], ['B']])
+          joblib.dump(encoder, 'encoder.joblib')
+
+          model = DummyClassifier(strategy='most_frequent')
+          model.fit(np.array([[1], [0]]), np.array([0, 1]))
+          joblib.dump(model, 'order_lateness_model.joblib')
+          print('Dummy artifacts created successfully!')
+          "
 
       - name: Run tests
         run: pytest tests/test_preprocessing.py -v
