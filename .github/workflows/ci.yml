@@ -26,22 +26,24 @@ jobs:
           import os
           import joblib
           import numpy as np
+          import pandas as pd
           from sklearn.preprocessing import OneHotEncoder
           from sklearn.dummy import DummyClassifier
 
-          # 1. إنشاء المجلد المطلوب
           os.makedirs('models_artifacts', exist_ok=True)
 
-          # 2. حفظ الملفات داخل المجلد الصحيح
-          encoder = OneHotEncoder(handle_unknown='ignore')
-          encoder.fit([['A'], ['B']])
+          # ضبط الـ Encoder ليعطي Dense Array ومطابق لأسماء الولايات في الاختبار
+          encoder = OneHotEncoder(sparse_output=False, handle_unknown='ignore')
+          # تدريبه على شكل DataFrame بـ Feature name مثل كود المشروع الحقيقي
+          df_states = pd.DataFrame({'customer_state': ['SP', 'RJ', 'MG', 'A', 'B']})
+          encoder.fit(df_states)
           joblib.dump(encoder, 'models_artifacts/encoder.joblib')
 
           model = DummyClassifier(strategy='most_frequent')
           model.fit(np.array([[1], [0]]), np.array([0, 1]))
           joblib.dump(model, 'models_artifacts/order_lateness_model.joblib')
 
-          print('Dummy artifacts created successfully in models_artifacts!')
+          print('Dummy artifacts updated successfully!')
           "
 
       - name: Run tests
