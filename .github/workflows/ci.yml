@@ -32,10 +32,15 @@ jobs:
 
           os.makedirs('models_artifacts', exist_ok=True)
 
-          # ضبط الـ Encoder ليعطي Dense Array ومطابق لأسماء الولايات في الاختبار
+          # استخراج أسماء الولايات مباشرة من feature_columns الخاصة بمشروعك
+          states = [
+              'AL', 'AM', 'AP', 'BA', 'CE', 'DF', 'ES', 'GO', 'MA', 
+              'MG', 'MS', 'MT', 'PA', 'PB', 'PE', 'PI', 'PR', 'RJ', 
+              'RN', 'RO', 'RR', 'RS', 'SC', 'SE', 'SP', 'TO'
+          ]
+
           encoder = OneHotEncoder(sparse_output=False, handle_unknown='ignore')
-          # تدريبه على شكل DataFrame بـ Feature name مثل كود المشروع الحقيقي
-          df_states = pd.DataFrame({'customer_state': ['SP', 'RJ', 'MG', 'A', 'B']})
+          df_states = pd.DataFrame({'customer_state': states})
           encoder.fit(df_states)
           joblib.dump(encoder, 'models_artifacts/encoder.joblib')
 
@@ -43,7 +48,7 @@ jobs:
           model.fit(np.array([[1], [0]]), np.array([0, 1]))
           joblib.dump(model, 'models_artifacts/order_lateness_model.joblib')
 
-          print('Dummy artifacts updated successfully!')
+          print('Dummy artifacts created matching feature_columns exactly!')
           "
 
       - name: Run tests
