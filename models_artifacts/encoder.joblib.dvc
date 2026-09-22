@@ -1,6 +1,0 @@
-outs:
-- md5: 0bdef7891615bfc06e58a1eefc3574b3
-  size: 1794
-  isexec: true
-  hash: md5
-  path: encoder.joblib
