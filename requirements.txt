@@ -6,3 +6,4 @@ PyYAML==6.0.3
 scikit-learn==1.5.1
 fastapi==0.141.1
 uvicorn==0.53.0
+great_expectations==1.23.1
