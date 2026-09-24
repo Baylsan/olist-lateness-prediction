@@ -8,6 +8,7 @@ import yaml
 import time
 import logging
 from fastapi import HTTPException
+from typing import List
 
 logger = logging.getLogger("api")
 
@@ -47,28 +48,51 @@ class OrderInput(BaseModel):
     order_estimated_delivery_date: str
     customer_state: str
 
+class PredictionResponse(BaseModel):
+    is_late: bool
+    probability: float
+    model_version: str
 
-@app.post("/predict")
-def predict(order: OrderInput):
-    metrics["total_requests"] += 1
-    order_dict = order.dict()
-
+def predict_order(order_dict: dict) -> PredictionResponse:
     failed = validate_order(order_dict)
+
     if failed:
-        metrics["validation_rejections"] += 1
         raise HTTPException(
             status_code=422,
             detail=f"Validation failed for columns: {failed}"
         )
 
+    processed = preprocess_order(
+        order_dict,
+        encoder,
+        feature_columns
+    )
+
+    probability = model.predict_proba(processed)[0][1]
+    is_late = bool(probability >= threshold)
+
+    model_version = (
+        f"{result['validation_winner']} "
+        f"(threshold = {threshold})"
+    )
+
+    return PredictionResponse(
+        is_late=is_late,
+        probability=float(probability),
+        model_version=model_version
+    )
+
+
+@app.post("/predict", response_model=PredictionResponse)
+def predict(order: OrderInput):
+    metrics["total_requests"] += 1
+
+    order_dict = order.dict()
+
     try:
         start_time = time.time()
 
-        processed = preprocess_order(order_dict, encoder, feature_columns)
-        probability = model.predict_proba(processed)[0][1]
-        is_late = bool(probability >= threshold)
-
-        model_version = f"{result['validation_winner']} (threshold = {threshold})"
+        prediction = predict_order(order_dict)
 
         latency = time.time() - start_time
 
@@ -76,19 +100,60 @@ def predict(order: OrderInput):
         metrics["total_latency"] += latency
 
         logger.info(
-            f"input={order_dict} | is_late={is_late} | probability={probability:.4f} "
-            f"| latency={latency:.4f}s | model_version={model_version}"
+            f"input={order_dict} | "
+            f"is_late={prediction.is_late} | "
+            f"probability={prediction.probability:.4f} | "
+            f"latency={latency:.4f}s | "
+            f"model_version={prediction.model_version}"
         )
 
-        return {
-            "is_late": is_late,
-            "probability": float(probability),
-            "model_version": model_version
-        }
+        return prediction
+
+    except HTTPException:
+        metrics["validation_rejections"] += 1
+        raise
 
     except Exception as e:
         metrics["errors"] += 1
         logger.error(f"Prediction failed: {e}")
+        raise
+
+@app.post(
+    "/predict/batch",
+    response_model=List[PredictionResponse]
+)
+def predict_batch(orders: List[OrderInput]):
+    metrics["total_requests"] += 1
+
+    predictions = []
+
+    try:
+        start_time = time.time()
+
+        for order in orders:
+            order_dict = order.dict()
+            prediction = predict_order(order_dict)
+            predictions.append(prediction)
+
+        latency = time.time() - start_time
+
+        metrics["successful_predictions"] += len(predictions)
+        metrics["total_latency"] += latency
+
+        logger.info(
+            f"batch_size={len(orders)} | "
+            f"latency={latency:.4f}s"
+        )
+
+        return predictions
+
+    except HTTPException:
+        metrics["validation_rejections"] += 1
+        raise
+
+    except Exception as e:
+        metrics["errors"] += 1
+        logger.error(f"Batch prediction failed: {e}")
         raise
 
 

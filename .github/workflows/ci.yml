@@ -21,4 +21,4 @@ jobs:
           pip install pytest
 
       - name: Run tests
-        run: pytest tests/test_preprocessing.py -v
+        run: pytest -v
