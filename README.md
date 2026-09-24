@@ -4,7 +4,6 @@ Production-oriented inference service for predicting e-commerce order delivery l
 
 This project is part of an MLOps training program (**Task 3: From Notebooks to Production**) and focuses on converting a notebook-based ML workflow into a reproducible inference service.
 
-**Repository:** https://github.com/Baylsan/olist-lateness-prediction
 
 ---
 
