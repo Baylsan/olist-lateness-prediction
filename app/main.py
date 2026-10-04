@@ -7,8 +7,10 @@ from pathlib import Path
 import yaml
 import time
 import logging
+import mlflow.xgboost
 from fastapi import HTTPException
 from typing import List
+from mlflow import MlflowClient
 
 logger = logging.getLogger("api")
 
@@ -23,7 +25,21 @@ with open(BASE_DIR / "config" / "config.yaml") as f:
     config = yaml.safe_load(f)
 
 encoder = joblib.load(BASE_DIR / config['model']['encoder_path'])
-model = joblib.load(BASE_DIR / config['model']['path'])
+model_uri = config["model"]["uri"]
+
+model = mlflow.xgboost.load_model(model_uri)
+
+model_name, model_alias = model_uri.replace("models:/", "").split("@")
+
+mlflow_client = MlflowClient()
+
+registry_model_version = str(
+    mlflow_client.get_model_version_by_alias(
+        model_name,
+        model_alias
+    ).version
+)
+
 with open(BASE_DIR / config['model']['results_path']) as f:
     result = json.load(f)
 
@@ -71,10 +87,7 @@ def predict_order(order_dict: dict) -> PredictionResponse:
     probability = model.predict_proba(processed)[0][1]
     is_late = bool(probability >= threshold)
 
-    model_version = (
-        f"{result['validation_winner']} "
-        f"(threshold = {threshold})"
-    )
+    model_version = registry_model_version
 
     return PredictionResponse(
         is_late=is_late,
