@@ -5,6 +5,10 @@ on: [push, pull_request]
 jobs:
   test:
     runs-on: ubuntu-latest
+
+    env:
+      MLFLOW_TRACKING_URI: sqlite:///mlflow.db
+
     steps:
       - uses: actions/checkout@v4
 
@@ -19,5 +23,31 @@ jobs:
           python -m pip install --upgrade pip
           pip install -r requirements-dev.txt
 
+      - name: Register model in MLflow
+        run: |
+          python mlflow_log.py
+
+      - name: Set production alias
+        run: |
+          python - <<'PY'
+          from mlflow import MlflowClient
+
+          client = MlflowClient()
+
+          versions = client.search_model_versions(
+              "name='order_lateness_model'"
+          )
+
+          version = max(versions, key=lambda v: int(v.version)).version
+
+          client.set_registered_model_alias(
+              "order_lateness_model",
+              "production",
+              str(version)
+          )
+
+          print(f"production -> Version {version}")
+          PY
+
       - name: Run tests
-        run: PYTHONPATH=. pytest -v
+        run: pytest -v

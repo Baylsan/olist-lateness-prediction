@@ -102,3 +102,15 @@ def test_batch_predict_rejects_invalid_order():
 
     assert response.status_code == 422
 
+def test_model_registry_alias():
+    from mlflow import MlflowClient
+    from app.main import registry_model_version
+
+    client = MlflowClient()
+
+    registered_version = client.get_model_version_by_alias(
+        "order_lateness_model",
+        "production"
+    )
+
+    assert str(registered_version.version) == registry_model_version

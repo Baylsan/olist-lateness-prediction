@@ -4,4 +4,5 @@ __pycache__/
 venv/
 .env
 mlflow.db
+ci_mlflow.db
 mlruns/
