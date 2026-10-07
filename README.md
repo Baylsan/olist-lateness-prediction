@@ -1,31 +1,34 @@
 # Order Lateness Prediction — Inference Service
 
-Production-oriented inference service for predicting e-commerce order delivery lateness using **FastAPI, XGBoost, MLflow, DVC, Great Expectations, Docker, and GitHub Actions**.
+Production-oriented inference service for predicting e-commerce order delivery lateness.
 
 This project is part of an MLOps training program (**Task 3: From Notebooks to Production**) and focuses on converting a notebook-based ML workflow into a reproducible inference service.
 
-
 ---
 
-## Overview
+# Overview
 
 The service receives raw order information and predicts whether the order is likely to be delivered late.
 
-**Input:** raw order fields such as item count, freight, payment value, timestamps, and customer state.
+**Input:**
+
+Raw order fields such as item count, freight, payment value, timestamps, and customer state.
 
 **Output:**
 
-* `is_late` — predicted lateness (`true` / `false`)
-* `probability` — probability of lateness
-* `model_version` — loaded model version
+- `is_late` — predicted lateness (`true` / `false`)
+- `probability` — probability of lateness
+- `model_version` — loaded model version
 
-The XGBoost model and preprocessing artifacts were trained separately in Task 2 and are loaded by the inference service. **No model training or fitting occurs at inference time.**
+The XGBoost model and preprocessing artifacts were trained separately in Task 2 and are loaded by the inference service.
+
+**No model training or fitting occurs at inference time.**
 
 The project focuses on the inference and MLOps layer rather than model tuning.
 
 ---
 
-## Architecture
+# Architecture
 
 ```text
 Raw Order
@@ -38,7 +41,11 @@ Great Expectations
 Preprocessing
     │
     ▼
-Trained XGBoost Model
+MLflow Model Registry
+    │
+    │ production alias
+    ▼
+XGBoost Model
     │
     ▼
 Prediction
@@ -48,28 +55,29 @@ Prediction
     └── model_version
 ```
 
-The service loads the trained model, encoder, feature configuration, and prediction threshold once during application startup.
+The service loads the registered model, encoder, feature configuration, and prediction threshold once during application startup.
 
 ---
 
-## Tech Stack
+# Tech Stack
 
-| Component           | Technology                     |
-| ------------------- | ------------------------------ |
-| API                 | FastAPI                        |
-| Model               | XGBoost                        |
-| Preprocessing       | Python / Pandas / Scikit-learn |
-| Data Validation     | Great Expectations             |
-| Experiment Tracking | MLflow                         |
-| Data Versioning     | DVC                            |
-| Testing             | Pytest                         |
-| Containerization    | Docker                         |
-| CI/CD               | GitHub Actions                 |
-| Configuration       | YAML                           |
+| Component | Technology |
+|---|---|
+| API | FastAPI |
+| Model | XGBoost |
+| Preprocessing | Python / Pandas / Scikit-learn |
+| Data Validation | Great Expectations |
+| Experiment Tracking | MLflow |
+| Model Registry | MLflow Model Registry |
+| Testing | Pytest |
+| Containerization | Docker |
+| CI/CD | GitHub Actions |
+| Configuration | YAML |
+| Data Versioning | DVC evaluated during development |
 
 ---
 
-## Project Structure
+# Project Structure
 
 ```text
 task3/
@@ -94,16 +102,20 @@ task3/
 │
 ├── .github/
 │   └── workflows/
-│       └── ci.yml               # Automated tests on push
+│       └── ci.yml               # Automated testing and MLflow registration
 │
 ├── logs/                        # Runtime logs (gitignored)
-├── mlflow_log.py                # MLflow experiment logging
+├── mlflow_log.py                # MLflow experiment/model logging
 ├── Dockerfile
 ├── requirements.txt
 └── README.md
 ```
 
-The original training notebooks (NB1–NB6) belong to Task 2 and are not duplicated in this repository. This repository contains the inference service and its MLOps infrastructure.
+The original training notebooks (NB1–NB6) belong to Task 2 and are not duplicated in this repository.
+
+This repository contains the inference service and its MLOps infrastructure.
+
+The local model artifact is retained as the source used by the MLflow logging and registration workflow, while the running inference service loads the model from the MLflow Model Registry.
 
 ---
 
@@ -117,7 +129,31 @@ source venv/bin/activate
 pip install -r requirements.txt
 ```
 
-## 2. Start the API
+## 2. Ensure the MLflow Model Registry is available
+
+The inference service loads the model using the MLflow `production` alias.
+
+The registered model must exist under:
+
+```text
+order_lateness_model
+```
+
+and the `production` alias must point to the model version used by the service.
+
+To inspect the local MLflow tracking environment:
+
+```bash
+mlflow ui
+```
+
+The MLflow UI is available at:
+
+```text
+http://127.0.0.1:5000
+```
+
+## 3. Start the API
 
 ```bash
 uvicorn app.main:app --reload
@@ -129,7 +165,7 @@ The API runs at:
 http://127.0.0.1:8000
 ```
 
-Interactive API documentation is available at:
+Interactive API documentation:
 
 ```text
 http://127.0.0.1:8000/docs
@@ -139,19 +175,19 @@ http://127.0.0.1:8000/docs
 
 # API Endpoints
 
-| Method | Endpoint         | Purpose                                          |
-| ------ | ---------------- | ------------------------------------------------ |
-| `POST` | `/predict`       | Validate, preprocess, and predict a single order |
-| `POST` | `/predict/batch` | Predict multiple orders                          |
-| `GET`  | `/health`        | Service health check                             |
-| `GET`  | `/model-info`    | Model and training information                   |
-| `GET`  | `/metrics`       | Runtime service metrics                          |
+| Method | Endpoint | Purpose |
+|---|---|---|
+| `POST` | `/predict` | Validate, preprocess, and predict a single order |
+| `POST` | `/predict/batch` | Predict multiple orders |
+| `GET` | `/health` | Service health check |
+| `GET` | `/model-info` | Model and training information |
+| `GET` | `/metrics` | Runtime service metrics |
 
 The request and response schemas are documented automatically through FastAPI at `/docs`.
 
 ---
 
-## Example Request
+# Example Request
 
 ```bash
 curl -X POST http://127.0.0.1:8000/predict \
@@ -175,11 +211,11 @@ The project uses **pytest** for automated testing.
 
 Tests cover the preprocessing and inference pipeline, including:
 
-* output structure
-* feature column ordering
-* categorical encoding
-* numerical transformations
-* API prediction behavior
+- output structure
+- feature column ordering
+- categorical encoding
+- numerical transformations
+- API prediction behavior
 
 Tests use the actual trained artifacts rather than mocked models.
 
@@ -189,7 +225,7 @@ Run the test suite with:
 pytest -v
 ```
 
-The same test suite is executed automatically by GitHub Actions on repository pushes.
+The same test suite is executed automatically by GitHub Actions on repository pushes and pull requests.
 
 ---
 
@@ -199,39 +235,56 @@ Incoming requests are validated before they reach preprocessing and model infere
 
 Current validation rules include:
 
-* numeric fields must satisfy defined sanity constraints
-* item counts cannot be negative
-* financial values must satisfy defined ranges
-* `customer_state` must belong to the Brazilian state codes represented in the training data
+- numeric fields must satisfy defined sanity constraints
+- item counts cannot be negative
+- financial values must satisfy defined ranges
+- `customer_state` must belong to the Brazilian state codes represented in the training data
 
 Invalid requests are rejected before prediction, preventing invalid values or unknown categories from silently reaching the model.
 
 ---
 
-# Data Versioning — DVC
+# Experiment Tracking and Model Registry — MLflow
 
-DVC was initialized as part of the MLOps workflow and used to explore versioning of model artifacts and datasets independently from Git.
+MLflow is used to track the training run information produced by Task 2 and to register the trained XGBoost model.
 
-For the final version of this project, the relatively small inference artifacts are stored directly in Git:
+The logging script records relevant:
 
-* `order_lateness_model.joblib`
-* `encoder.joblib`
+- parameters
+- validation metrics
+- test metrics
+- training results
+- model artifacts
 
-This was a deliberate design choice because these artifacts are small enough to be practical in Git and the project does not currently use a remote DVC storage backend.
-
-For larger datasets or models, a remote DVC backend such as S3 or Google Drive would be more appropriate.
-
----
-
-# Experiment Tracking — MLflow
-
-Training results from Task 2 can be logged to MLflow using:
+Run locally with:
 
 ```bash
 python3 mlflow_log.py
 ```
 
-The script reads the stored training results and records relevant parameters, metrics, and model artifacts.
+The registered model is:
+
+```text
+order_lateness_model
+```
+
+The model is registered in the **MLflow Model Registry**, creating versioned model entries.
+
+The CI workflow also automatically:
+
+1. registers the model
+2. discovers the latest registered model version
+3. assigns that version to the `production` alias
+
+This makes the CI pipeline responsible for keeping the production alias aligned with the latest registered model version.
+
+The inference service loads the XGBoost model from the MLflow Model Registry using the `production` alias:
+
+```text
+models:/order_lateness_model@production
+```
+
+The `production` alias provides a stable deployment reference while allowing the underlying model version to change without modifying the application code.
 
 The local MLflow UI can be started with:
 
@@ -245,7 +298,37 @@ and accessed at:
 http://127.0.0.1:5000
 ```
 
-Local MLflow databases and run directories are excluded from Git because they are generated runtime data.
+Local MLflow databases and generated run directories are excluded from Git.
+
+---
+
+# Data Versioning — DVC
+
+DVC was evaluated during the project as a mechanism for versioning model artifacts independently from Git.
+
+The initial approach used a Google Drive DVC remote. The remote was configured successfully and the DVC Google Drive plugin was installed.
+
+However, the first authentication attempt failed because Google blocked the default DVC OAuth application with:
+
+```text
+This app is blocked
+This app tried to access sensitive info in your Google Account.
+```
+
+This is a known issue documented by DVC for its Google Drive integration.
+
+The project therefore reverted to storing the relatively small inference artifacts directly in Git:
+
+```text
+models_artifacts/order_lateness_model.joblib
+models_artifacts/encoder.joblib
+```
+
+This was a deliberate engineering decision to keep the project simple and ensure that the CI environment can obtain all artifacts through a normal Git checkout without requiring external DVC authentication.
+
+The local model artifact is also used by `mlflow_log.py` as the source for model registration.
+
+For substantially larger datasets or model artifacts, a remote DVC backend would be more appropriate.
 
 ---
 
@@ -255,11 +338,11 @@ Local MLflow databases and run directories are excluded from Git because they ar
 
 The `/metrics` endpoint exposes runtime metrics including:
 
-* `total_requests`
-* `successful_predictions`
-* `validation_rejections`
-* `errors`
-* `average_latency_seconds`
+- `total_requests`
+- `successful_predictions`
+- `validation_rejections`
+- `errors`
+- `average_latency_seconds`
 
 Validation rejections are tracked separately from unexpected application errors because invalid user input is an expected API behavior rather than necessarily a system failure.
 
@@ -271,7 +354,12 @@ Prediction requests are logged to:
 logs/app.log
 ```
 
-The logs contain information such as the prediction result, probability, latency, and model version.
+The logs contain information such as:
+
+- prediction result
+- probability
+- latency
+- model version
 
 These logs provide a foundation for future monitoring of model performance and data drift when actual delivery outcomes become available.
 
@@ -279,88 +367,109 @@ These logs provide a foundation for future monitoring of model performance and d
 
 # CI/CD
 
-GitHub Actions automatically runs the test suite when changes are pushed to the repository.
+GitHub Actions automatically runs the project checks when changes are pushed to the repository or when a pull request is opened.
 
-The workflow verifies that the inference service and its automated tests remain functional after changes.
+The current workflow:
+
+1. checks out the repository
+2. sets up Python 3.10
+3. installs project dependencies
+4. registers the model in MLflow
+5. assigns the latest registered model version to the `production` alias
+6. runs the automated test suite
+
+The workflow is designed to ensure that changes do not break the inference service or its MLOps workflow.
 
 ---
 
 # Docker
 
-The application includes a Dockerfile intended to package the inference service and its runtime dependencies.
+The project includes a Dockerfile intended to package the inference service and its runtime dependencies.
 
-A local Docker build was attempted successfully through the Dockerfile stages until dependency installation.
+The Docker build was tested locally and successfully reached the dependency installation stage.
 
-The build is currently blocked by a **network timeout while downloading the XGBoost wheel from PyPI**:
+The current build is limited by a network problem while downloading the large XGBoost wheel from PyPI:
 
 ```text
 xgboost-3.2.0-py3-none-manylinux_2_28_x86_64.whl
 131.7 MB
 ```
 
-During the latest build attempt, Docker downloaded approximately 5.7 MB at around 5.9 kB/s before the connection timed out after approximately 12 minutes:
+The download from `files.pythonhosted.org` was extremely slow under the current network conditions.
 
-```text
-pip._vendor.urllib3.exceptions.ReadTimeoutError:
-HTTPSConnectionPool(host='files.pythonhosted.org', port=443):
-Read timed out.
-```
+An initial build attempt ended with a `ReadTimeoutError`.
 
-The same `xgboost==3.2.0` package is already installed and works correctly in the local Python environment.
+A later build attempt downloaded only part of the wheel before pip reported a SHA256 mismatch, indicating that the package received by Docker was incomplete or corrupted during transfer.
 
-Therefore, the current Docker limitation is related to the **network transfer of the large XGBoost package during image construction**, rather than an application-level Dockerfile error.
+The same XGBoost version was downloaded successfully outside Docker and its SHA256 checksum matched the expected package checksum.
 
-Dockerization can be completed later when a sufficiently stable connection is available.
+Therefore, the current Docker limitation is related to the dependency download environment rather than a demonstrated application-level failure.
+
+The Docker build will be revisited once a stable dependency download path is available.
 
 ---
 
 # Known Limitations
 
-### XGBoost Version
+## XGBoost Version
 
-The model was originally trained using `xgboost==3.4.1` in Google Colab. The inference environment currently uses `xgboost==3.2.0`.
+The model was originally trained using `xgboost==3.4.1` in Google Colab.
 
-The model loads successfully and produces consistent predictions in the local inference environment, but exact bitwise reproducibility across different XGBoost versions is not guaranteed.
+The current inference environment uses:
 
-### Docker Build
+```text
+xgboost==3.2.0
+```
 
-The Dockerfile is present and configured, but the image has not yet been successfully built because downloading the 131.7 MB XGBoost wheel from PyPI repeatedly times out under the current network conditions.
+The model loads successfully and produces consistent predictions in the current local inference environment, but exact bitwise reproducibility across different XGBoost versions is not guaranteed.
 
-This is an environment/network limitation rather than a demonstrated application failure.
+## Docker Build
 
-### MLflow UI
+The Dockerfile is present and configured, but a complete image build has not yet been achieved because downloading the 131.7 MB XGBoost wheel from PyPI repeatedly fails under the current network conditions.
 
-MLflow tracking works locally and the run data is stored successfully. Accessing the MLflow dashboard through a Windows browser from WSL2 may require additional network configuration.
+## MLflow UI
+
+MLflow tracking and model registration work locally.
+
+Accessing the MLflow dashboard through a Windows browser from WSL2 may require additional network configuration.
+
+## DVC Remote
+
+DVC was evaluated but a cloud remote was not retained in the final project because the Google Drive OAuth flow was blocked and the current model artifacts are small enough to remain in Git.
 
 ---
 
 # Key Design Decisions
 
-### Stateless Inference
+## Stateless Inference
 
 The API accepts the fields required by the model directly rather than querying PostgreSQL during inference.
 
 This keeps the inference service stateless and independently deployable.
 
-### Pre-loaded Artifacts
+## Pre-loaded Artifacts
 
-The model, encoder, threshold, and feature configuration are loaded once during application startup rather than for every request.
+The MLflow-registered model, encoder, threshold, and feature configuration are loaded once during application startup rather than for every request.
 
 This avoids unnecessary disk I/O during inference.
 
-### Single Source of Truth
+## Single Source of Truth
 
 The prediction threshold and feature columns are loaded from the stored model results rather than duplicated across configuration files.
 
-### Shared Preprocessing Logic
+## Shared Preprocessing Logic
 
 Single-order preprocessing is implemented as the atomic preprocessing operation, while batch prediction reuses the same logic rather than maintaining a separate preprocessing implementation.
 
-### Separation of Training and Inference
+## Separation of Training and Inference
 
 Model training remains in the Task 2 notebooks.
 
-This repository contains the inference layer and MLOps infrastructure required to serve the already-trained model.
+This repository contains the inference layer and the MLOps infrastructure required to serve the already-trained model.
+
+## CI-driven Model Registration
+
+Model registration and production alias assignment are integrated into the CI workflow so that model versions can be tracked consistently alongside code changes.
 
 ---
 
@@ -368,11 +477,11 @@ This repository contains the inference layer and MLOps infrastructure required t
 
 Potential production extensions include:
 
-* automated Docker image builds and deployment
-* remote DVC storage
-* MLflow Model Registry
-* automated model monitoring
-* automated data-drift detection
-* alerting based on service metrics
-* periodic model evaluation using newly observed delivery outcomes
-* production-grade observability and centralized logging
+- completing and validating the Docker image build
+- deploying the Docker image to a production environment
+- remote DVC storage for larger datasets and artifacts
+- automated model monitoring
+- automated data-drift detection
+- alerting based on service metrics
+- periodic model evaluation using newly observed delivery outcomes
+- production-grade observability and centralized logging
